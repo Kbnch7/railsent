@@ -1,0 +1,6 @@
+version: '3.8'
+services:
+  customcnn_grumodel:
+    build: .
+    volumes:
+      - .:/app

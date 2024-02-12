@@ -1,0 +1,13 @@
+joblib
+# tensorflow-gpu==2.9.2
+tensorflow
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+nltk
+transformers
+tqdm
+optuna
+pymorphy2
