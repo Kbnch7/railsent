@@ -5,24 +5,29 @@ import pymorphy2
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
+
 from tqdm import tqdm
 from tqdm.auto import tqdm
 from torch.optim import AdamW
-import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
+from spellchecker import SpellChecker
 from torch.optim.lr_scheduler import StepLR
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from transformers import GPT2Tokenizer, GPT2ForSequenceClassification
-from natasha import Segmenter, MorphVocab, NewsEmbedding, NewsMorphTagger, Doc
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from natasha import Segmenter, MorphVocab, NewsEmbedding, NewsMorphTagger, Doc, NewsNERTagger, PER, NamesExtractor
 
 
 segmenter = Segmenter()
 morph_vocab = MorphVocab()
 emb = NewsEmbedding()
 morph_tagger = NewsMorphTagger(emb)
+# Initialize the NER tagger
+ner_emb = NewsEmbedding()
+ner_tagger = NewsNERTagger(ner_emb)
 
 morph = pymorphy2.MorphAnalyzer()
 stop_words = set(stopwords.words('russian'))
@@ -30,6 +35,7 @@ stop_words = set(stopwords.words('russian'))
 class SentimentDataset(Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
+        # Ensure labels are a long tensor right from the initialization
         self.labels = torch.tensor(labels, dtype=torch.long)
 
     def __getitem__(self, idx):
@@ -41,26 +47,51 @@ class SentimentDataset(Dataset):
     def __len__(self):
         return len(self.labels)
 
+def recognize_entities(text):
+    doc = Doc(text)
+    doc.segment(segmenter)
+    doc.tag_ner(ner_tagger)
+    
+    for span in doc.spans:
+        span.normalize(morph_vocab)
+    
+    # Optionally, replace entity tokens with a placeholder or remove them
+    for span in doc.spans:
+        if span.type == PER:
+            text = text.replace(span.text, '')  # Remove or replace with a placeholder
+    
+    return text
+
+def correct_spelling(tokens):
+    spell = SpellChecker(language='ru')  # Initialize the spell checker with Russian language
+    corrected_tokens = [spell.correction(token) for token in tokens]
+    return corrected_tokens
 
 def preprocess_text(text):
     text = text.lower()
+    text = recognize_entities(text)  # Recognize and handle named entities
     doc = Doc(text)
     doc.segment(segmenter)
     doc.tag_morph(morph_tagger)
     
     processed_tokens = []
     for token in doc.tokens:
+        # Perform lemmatization
         token.lemmatize(morph_vocab)
         if token.text not in stop_words and not re.match(r'\d+', token.text):
-            processed_token = handle_negations(token)
+            pos_tagged_token = f"{token.lemma}_{token.pos}" if token.pos else token.lemma
+            processed_token = handle_negations(pos_tagged_token)
             processed_tokens.append(processed_token)
     
     return ' '.join(processed_tokens)
 
 def handle_negations(token):
-    if token.text.startswith("не"):
-        return "не_" + token.lemma
-    return token.lemma
+    # Check if token starts with negation followed by "_", indicating a POS tagged negated word
+    if token.startswith("не_"):
+        # Prefix the entire POS-tagged token with "не" to indicate negation
+        return f"не{token}"
+    return token
+
 
 def load_dataset(file_path, tokenizer):
     df = pd.read_csv(file_path)
@@ -77,11 +108,13 @@ def load_and_preprocess_data(filepath):
     tqdm.pandas(desc="Processing Texts")
     df['processed_text'] = df['text'].progress_apply(preprocess_text)
     
+    # Print sample data before and after processing
     print("\nSample data before and after processing:")
     for _, row in df.sample(2).iterrows():
         print(f"Original text: {row['text']}")
         print(f"Processed text: {row['processed_text']}\n---")
 
+    # Print sentiment counts before balancing
     print("Sentiment counts before balancing:")
     print(df['sentiment'].value_counts())
 
@@ -103,18 +136,18 @@ def load_and_preprocess_data(filepath):
     return balanced_df
 
 def load_rugpt_model():
-    model_name = "sberbank-ai/rugpt3small_based_on_gpt2"
+    model_name = "sberbank-ai/rugpt3small_based_on_gpt2"  # Change to a larger model
     tokenizer = GPT2Tokenizer.from_pretrained(model_name)
     model = GPT2ForSequenceClassification.from_pretrained(model_name, num_labels=3)
     return model, tokenizer
 
-def train(model, train_loader, val_loader, device, optimizer, num_epochs=5, model_name='rugpt3small_based_on_gpt2'):
+def train(model, train_loader, val_loader, device, optimizer, num_epochs=1, model_name='rugpt3small_based_on_gpt2'):
     model.train()
-    scheduler = StepLR(optimizer, step_size=2, gamma=0.85)
+    scheduler = StepLR(optimizer, step_size=2, gamma=0.85)  # Adjust learning rate schedule
     
-    early_stopping_patience = 10
+    early_stopping_patience = 10  # Increase patience
     best_val_accuracy = 0
-    save_path = f"./models/{model_name}.bin"
+    save_path = f"./models/{model_name}.bin"  # Model saving path
 
     for epoch in range(num_epochs):
         model.train()  # Set model to training mode
@@ -132,7 +165,7 @@ def train(model, train_loader, val_loader, device, optimizer, num_epochs=5, mode
             running_loss += loss.item()
             progress_bar.set_postfix({'Training Loss': f'{running_loss/(progress_bar.last_print_n+1):.4f}'})
 
-        scheduler.step()
+        scheduler.step()  # Adjust learning rate
         
         # Validation phase with its own progress bar
         val_running_loss = 0.0
@@ -160,10 +193,11 @@ def train(model, train_loader, val_loader, device, optimizer, num_epochs=5, mode
             epochs_without_improvement = 0
             print(f"New best accuracy: {accuracy}. Saving the model...")
             
+            # Ensure the model directory exists
             if not os.path.exists("./models"):
                 os.makedirs("./models")
             
-            torch.save(model.state_dict(), save_path)
+            torch.save(model.state_dict(), save_path)  # Save the model
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= early_stopping_patience:
@@ -204,7 +238,7 @@ def get_misclassified_texts(validation_df, predictions, true_labels):
     return misclassified_texts
 
 def main():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu' if torch.cuda.is_available() else 'cpu')
     
     model, tokenizer = load_rugpt_model()
     model.to(device)
@@ -226,8 +260,8 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=16)
 
     # Prepare for training
-    optimizer = AdamW(model.parameters(), lr=2e-5)
-    final_predictions, final_true_labels = train(model, train_loader, val_loader, device, optimizer, num_epochs=5)
+    optimizer = AdamW(model.parameters(), lr=1e-5)
+    final_predictions, final_true_labels = train(model, train_loader, val_loader, device, optimizer, num_epochs=1)
 
     # Visualizing the confusion matrix
     cm = confusion_matrix(final_true_labels, final_predictions)

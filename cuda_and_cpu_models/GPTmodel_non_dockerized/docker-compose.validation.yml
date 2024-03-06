@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  ru_gpt_validation:
+    build:
+      context: .
+      dockerfile: Dockerfile_validation
+    volumes:
+      - model_data:/app/models
+volumes:
+  model_data:

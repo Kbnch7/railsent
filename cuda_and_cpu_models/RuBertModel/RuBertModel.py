@@ -24,17 +24,21 @@ import pymorphy2
 import os
 import datetime
 
-def configure_gpu():
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            print(f"GPUs available: {gpus}")
-        except RuntimeError as e:
-            print(e)
-    else:
-        print("No GPU, using CPU.")
+# def configure_gpu():
+#     gpus = tf.config.list_physical_devices('GPU')
+#     if gpus:
+#         try:
+#             for gpu in gpus:
+#                 tf.config.experimental.set_memory_growth(gpu, True)
+#             print(f"GPUs available: {gpus}")
+#         except RuntimeError as e:
+#             print(e)
+#     else:
+#         print("No GPU, using CPU.")
+
+def configure_cpu():
+    tf.config.set_visible_devices([], 'GPU')
+    print("Configured to use CPU.")
 
 def download_nltk_data():
     nltk.download('stopwords', quiet=True)
@@ -43,65 +47,20 @@ morph = pymorphy2.MorphAnalyzer()
 
 def preprocess_text(text):
     text = text.lower()
-    text = re.sub(r'[^\w\s]', ' ', text) 
-    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'[^\w\s]', ' ', text)  # Remove punctuation
+    text = re.sub(r'\d+', '', text)  # Remove numbers
     words = text.split()
-    stop_words = stopwords.words('russian')
+    stop_words = stopwords.words('russian')  # Load Russian stop words
     
     processed_words = []
     
     for word in words:
-        if word not in stop_words:
-            lemmatized_word = morph.parse(word)[0].normal_form
+        if word not in stop_words:  # Remove stop words
+            lemmatized_word = morph.parse(word)[0].normal_form  # Lemmatize the word
             processed_words.append(lemmatized_word)
     
     return ' '.join(processed_words)
 
-
-# def load_and_preprocess_data(filepath):
-#     df = pd.read_csv(filepath)
-    
-#     tqdm.pandas(desc="Processing Texts")
-    
-#     df['processed_text'] = df['text'].progress_apply(preprocess_text)
-    
-#     samples = df.sample(2)
-#     for index, row in samples.iterrows():
-#         print("Original text:", row['text'])
-#         print("Processed text:", row['processed_text'])
-#         print("---")
-
-#     return df
-
-# def load_and_preprocess_data(filepath):
-#     df = pd.read_csv(filepath, header=None, names=['sentiment', 'text'])
-    
-#     # Preprocess the text
-#     tqdm.pandas(desc="Processing Texts")
-#     df['processed_text'] = df['text'].progress_apply(preprocess_text)
-    
-#     # Display sample data
-#     samples = df.sample(2)
-#     for index, row in samples.iterrows():
-#         print("Original text:", row['text'])
-#         print("Processed text:", row['processed_text'])
-#         print("---")
-    
-#     # Balance the dataset
-#     counts = df['sentiment'].value_counts()
-#     min_count = counts.min()
-#     balanced_df = pd.DataFrame()
-#     for sentiment in df['sentiment'].unique():
-#         balanced_subset = df[df['sentiment'] == sentiment].sample(n=min_count, random_state=42)
-#         balanced_df = pd.concat([balanced_df, balanced_subset])
-    
-#     balanced_df = balanced_df.sample(frac=1, random_state=42).reset_index(drop=True)
-    
-#     # Display the number of samples for each sentiment after balancing
-#     print("Balanced dataset counts:")
-#     print(balanced_df['sentiment'].value_counts())
-    
-#     return balanced_df
 def load_and_preprocess_data(filepath):
     df = pd.read_csv(filepath)
     tqdm.pandas(desc="Processing Texts")
@@ -133,16 +92,18 @@ def load_and_preprocess_data(filepath):
 def encode_texts(tokenizer, texts):
     return tokenizer(texts, padding='max_length', truncation=True, max_length=512, return_tensors="tf")
 
-def load_rubert_model():
-    model_name = "DeepPavlov/rubert-base-cased"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = TFAutoModelForSequenceClassification.from_pretrained(model_name, from_pt=True, num_labels=3)
-    return model, tokenizer
+
 
 def prepare_dataset(encoded_texts, labels):
     dataset = tf.data.Dataset.from_tensor_slices((dict(encoded_texts), labels))
     dataset = dataset.shuffle(189000).batch(32)
     return dataset
+
+def load_rubert_model():
+    model_name = "DeepPavlov/rubert-base-cased"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = TFAutoModelForSequenceClassification.from_pretrained(model_name, from_pt=True, num_labels=3)
+    return model, tokenizer
 
 def train_and_evaluate_model(train_dataset, val_dataset, model, class_weight=None):
     optimizer = tf.keras.optimizers.Adam(learning_rate=5e-5)
@@ -150,8 +111,10 @@ def train_and_evaluate_model(train_dataset, val_dataset, model, class_weight=Non
     metric = tf.keras.metrics.SparseCategoricalAccuracy('accuracy')
     model.compile(optimizer=optimizer, loss=loss, metrics=[metric])
     
+    # Define log directory for TensorBoard
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     
+    # Ensure the TensorBoard log directory exists
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
@@ -162,7 +125,7 @@ def train_and_evaluate_model(train_dataset, val_dataset, model, class_weight=Non
     early_stopping_callback = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
     
     # ReduceLROnPlateau callback to reduce learning rate when a metric has stopped improving
-    reduce_lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=1e-6, verbose=1)
+    reduce_lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=1e-5, verbose=1)
     
     # Start training with callbacks
     history = model.fit(
@@ -191,12 +154,13 @@ def get_misclassified_texts(validation_df, predictions, tokenizer):
     return misclassified_texts
 
 def main():
-    configure_gpu()
+    # configure_gpu()
+    configure_cpu()
     download_nltk_data()
     
     # Load and preprocess data
-    train_filepath = 'train_2.csv'
-    validation_filepath = 'valid2.csv'
+    train_filepath = 'train copy.csv'
+    validation_filepath = 'valid copy.csv'
     train_df = load_and_preprocess_data(train_filepath)
     validation_df = load_and_preprocess_data(validation_filepath)
     
@@ -225,7 +189,7 @@ def main():
     # Generate predictions from the validation dataset
     predictions = model.predict(val_dataset.map(lambda x, y: x))
 
-    # if 'logits' attribute is not present
+    # Assuming predictions are logits directly if 'logits' attribute is not present
     predicted_logits = predictions.logits if hasattr(predictions, 'logits') else predictions
 
     predicted_labels = np.argmax(predicted_logits, axis=1)

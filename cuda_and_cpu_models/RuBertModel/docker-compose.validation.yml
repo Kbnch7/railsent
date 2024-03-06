@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  rubert_validation:
+    build:
+      context: .
+      dockerfile: Dockerfile_validation
+    volumes:
+      - model_data:/app/rubert_sentiment_model
+volumes:
+  model_data:
