@@ -1,9 +1,6 @@
 version: '3.8'
 services:
-  ru_gpt_model:
+  ru_gpt3_model:
     build: .
     volumes:
       - .:/app
-      - model_data:/app/models
-volumes:
-  model_data:
