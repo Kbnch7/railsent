@@ -1,0 +1,23 @@
+version: "3.1"
+
+intents:
+  - create_plans
+  - read_plans
+  - update_plans
+  - delete_plans
+
+entities:
+  - time
+  - place
+  - old_time
+  - new_time
+
+actions:
+  - action_create_plans_response
+  - action_read_plans_response
+  - action_update_plans_response
+  - action_delete_plans_response
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

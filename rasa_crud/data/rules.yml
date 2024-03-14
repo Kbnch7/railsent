@@ -1,0 +1,26 @@
+version: "3.1"
+
+rules:
+#Описание поведения при желании пользователя записать план в "ежедневник".
+- rule: Create a plan
+  steps:
+    - intent: create_plans
+    - action: action_create_plans_response
+
+#Описание поведения при желании пользователя прочитать план из "ежедневника".
+- rule: Read plans
+  steps:
+    - intent: read_plans
+    - action: action_read_plans_response
+
+#Описание поведения при желании пользователя обновить план в "ежедневнике".
+- rule: Update plans
+  steps:
+    - intent: update_plans
+    - action: action_update_plans_response
+
+#Описание поведения при желании пользователя удалить план в "ежедневнике".
+- rule: Delete plans
+  steps:
+    - intent: delete_plans
+    - action: action_delete_plans_response
