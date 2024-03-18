@@ -3,7 +3,7 @@ from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 import rutimeparser
 import pymorphy2
-from DB import create, use_database
+from DB import utils_db
 
 
 class CreateRow(Action):
@@ -73,8 +73,7 @@ class CreateRow(Action):
 
         try:
             # Попытка сделать запись в ежедневник.
-            create.start_database()
-            query: bool = use_database.create_plans(0, place, full_time)
+            query: bool = utils_db.create_plans(0, place, full_time)
 
             # Если попытка успешная - вывод сообщения пользователю об успешной
             # записи.
@@ -141,8 +140,7 @@ class ReadRow(Action):
 
         try:
             # Попытка прочитать данные из ежедневника.
-            create.start_database()
-            user_plans: list = use_database.read_plans(time)
+            user_plans: list = utils_db.read_plans(time)
 
             # Если удалось прочитать данные из ежедневника, то вывожу
             # их пользователю.
@@ -235,8 +233,7 @@ class UpdateRow(Action):
 
         try:
             # Попытка обновить данные в ежедневнике.
-            create.start_database()
-            result: bool = use_database.update_plans(place, old_time, new_time)
+            result: bool = utils_db.update_plans(place, old_time, new_time)
 
             # Если удалось обновить данные в ежедневнике, то вывожу сообщение
             # пользователю об этом.
@@ -324,8 +321,7 @@ class DeleteRow(Action):
 
         try:
             # Попытка удалить запись в ежедневнике.
-            create.start_database()
-            result: bool = use_database.delete_plans(place, full_time)
+            result: bool = utils_db.delete_plans(place, full_time)
 
             # Если удалось удалить данные с ежедневника, то вывожу сообщние
             # пользователю об этом.

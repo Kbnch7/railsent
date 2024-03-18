@@ -1,4 +1,5 @@
 import sqlite3
+from DB import queries
 
 
 def start_database() -> None:
@@ -13,7 +14,7 @@ def start_database() -> None:
 
     cursor = conn.cursor()
 
-    cursor.execute("CREATE TABLE IF NOT EXISTS plans (user_id INTEGER, place TEXT, time TEXT );")
+    cursor.execute(queries.create_db_query)
     conn.commit()
 
     cursor.close()

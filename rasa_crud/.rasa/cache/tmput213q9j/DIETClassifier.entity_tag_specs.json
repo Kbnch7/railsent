@@ -1,0 +1,44 @@
+[
+  {
+    "tag_name": "entity",
+    "ids_to_tags": {
+      "1": "B-new_time",
+      "2": "I-new_time",
+      "3": "L-new_time",
+      "4": "U-new_time",
+      "5": "B-old_time",
+      "6": "I-old_time",
+      "7": "L-old_time",
+      "8": "U-old_time",
+      "9": "B-place",
+      "10": "I-place",
+      "11": "L-place",
+      "12": "U-place",
+      "13": "B-time",
+      "14": "I-time",
+      "15": "L-time",
+      "16": "U-time",
+      "0": "O"
+    },
+    "tags_to_ids": {
+      "B-new_time": 1,
+      "I-new_time": 2,
+      "L-new_time": 3,
+      "U-new_time": 4,
+      "B-old_time": 5,
+      "I-old_time": 6,
+      "L-old_time": 7,
+      "U-old_time": 8,
+      "B-place": 9,
+      "I-place": 10,
+      "L-place": 11,
+      "U-place": 12,
+      "B-time": 13,
+      "I-time": 14,
+      "L-time": 15,
+      "U-time": 16,
+      "O": 0
+    },
+    "num_tags": 17
+  }
+]

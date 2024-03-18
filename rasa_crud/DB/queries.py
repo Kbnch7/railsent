@@ -1,0 +1,6 @@
+insert_query = """INSERT INTO plans (user_id, place, time) VALUES (?, ?, ?)"""
+read_query = """SELECT * FROM plans WHERE time LIKE (?)"""
+check_existence_query = """SELECT * FROM plans WHERE place = (?) AND time = (?)"""
+update_query = """UPDATE plans SET time = (?) WHERE time = (?) AND place = ?"""
+delete_query = """DELETE from plans WHERE place = ? AND time = ?"""
+create_db_query = """CREATE TABLE IF NOT EXISTS plans (user_id INTEGER, place TEXT, time TEXT );"""
