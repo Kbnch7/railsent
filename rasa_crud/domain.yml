@@ -13,10 +13,10 @@ entities:
   - new_time
 
 actions:
-  - action_create_plans_response
-  - action_read_plans_response
-  - action_update_plans_response
-  - action_delete_plans_response
+  - action_create_plans
+  - action_read_plans
+  - action_update_plans
+  - action_delete_plans
 
 session_config:
   session_expiration_time: 60

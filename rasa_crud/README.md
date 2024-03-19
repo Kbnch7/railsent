@@ -8,7 +8,7 @@
 3. Установить Python3.9 (https://www.microsoft.com/store/productId/9P7QFQMJRFP7?ocid=pdpshare).
 4. Выбрать интерпретатор Python3.9 (путь: C:\Users\*пользователь*\AppData\Local\Microsoft\WindowsApps\python3.9.exe )
 5. Создать виртуальное окружение командой "python -m venv venv".
-6. Активировать виртуальное окружение командой ".\venv\Scripts\activate".
+6. Активировать виртуальное окружение командой ".\venv\Scripts\activate" (windows), "source env/bin/activate" (linux).
 7. Установить зависимости проекта командой "pip install -r requirements.txt" из папки с проектом.
 8. Обучить модель с помощью команды "rasa train".
 9. После обучения запустить модель командой "rasa shell".

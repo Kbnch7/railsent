@@ -6,13 +6,13 @@ from DB import queries
 
 def create_plans(user_id: str, place: str, time: str):
     """
-    Функция, которая записывает определенный план (запись в таблицу
-    "plans" базы данных) на указанное время.
+    Функция, которая записывает определенный план (запись в таблице
+    базы данных) на указанное время.
 
     На вход подаются:
-     - user_id (str)
-     - place (str)
-     - time (str)
+     - user_id (str) Идентификатор пользователя.
+     - place (str) Место для записи в ежедневник.
+     - time (str) Время для записи в ежедневник.
 
     Возвращает True, если запись в таблицу "plans" базы данных была сделана.
 
@@ -22,85 +22,72 @@ def create_plans(user_id: str, place: str, time: str):
     # Создает бд, если таковая отсутствует.
     create.start_database()
 
-    # Если хоть один параметр для записи в таблицу "plans" базы данных
-    # отсутствует, то функция вернет False.
     if user_id is None or place is None or time is None:
         return False
-    else:
-        conn: sqlite3.Connection = sqlite3.connect('database.db')
-        with conn:
-            cursor: sqlite3.Cursor = conn.cursor()
 
-            # Запрос к таблице "plans" базы данных (вставка новой записи).
-            sql_query: str = queries.insert_query
-            arguments: tuple = (int(user_id), str(place), str(time))
+    connection = sqlite3.connect('database.db')
+    with connection:
+        cursor = connection.cursor()
 
-            cursor.execute(sql_query, arguments)
-            conn.commit()
-            return True
+        # Запрос к таблице "plans" базы данных (вставка новой записи).
+        sql_query = queries.insert_query
+        arguments = (user_id, place, time)
+
+        cursor.execute(sql_query, arguments)
+        connection.commit()
+        return True
 
 
 def read_plans(user_time: str) -> list:
-    """Функция, которая считывает планы (записи в таблице "plans" базы
+    """Функция, которая считывает планы (записи в таблице базы
     данных), записанные на указанное время (колонка "time" ) в базе данных.
 
     На вход подаются:
-     - user_time (str)
+     - user_time (str) Время, запись на которое необходимо считать.
 
-    Возвращает все записи (list) с таблицы "plans" базы данных, в которых
+    Возвращает все записи (list) с таблицы базы данных, в которых
     значение колонки "time" совпадает с входными данными.
     """
     # Создает бд, если таковая отсутствует.
     create.start_database()
 
-    conn: sqlite3.Connection = sqlite3.connect('database.db')
-    with conn:
-        cursor: sqlite3.Cursor = conn.cursor()
+    connection = sqlite3.connect('database.db')
+    with connection:
+        cursor = connection.cursor()
 
         # Поиск времени (колонка "time"), начало которого совпадает с
-        # указанным пользователем временем (его датой) в таблице "plans".
-        sql_query: str = queries.read_query
-        arguments: tuple = (str(user_time.split(' ')[0])+'%',)
+        # указанным пользователем временем (его датой) в таблице базы данных.
+        sql_query = queries.read_query
+        arguments = (str(user_time.split(' ')[0])+'%',)
 
         # Получение результата запроса.
         cursor.execute(sql_query, arguments)
-        response: list = cursor.fetchall()
+        response = cursor.fetchall()
 
-        answer: list = []
+        answer = []
 
         # Если в указанном пользователем времени больше 1 параметра (например,
         # дата и время), то происходят дополнительные проверки.
         if len(user_time.split()) > 1:
 
-            # Преобразования введенного пользователем времени к формату,
-            # который используется в таблице "plans" колонке "time" базы
-            # данных.
-            user_time: datetime.datetime = datetime.datetime.strptime(
+            user_time = datetime.datetime.strptime(
                 user_time, '%Y-%m-%d %H:%M:%S'
                 )
 
-            # Цикл, который обрабатывает значения, полученные по запросу из
-            # таблицы "plans" базы данных (переменная response).
             for plan in response:
 
                 # Ожидание исключения необходимо для того случая, если время в
                 # таблице "plans" колонке "time" записано не в том формате,
                 # который ожидалось (или значение может быть None).
                 try:
-                    # Приведение времени к общему формату, полученного из
-                    # колонки "time" таблицы "plans" базы данных.
-                    plan_time: datetime.datetime = datetime.datetime.strptime(
+                    plan_time = datetime.datetime.strptime(
                         plan[2], '%Y-%m-%d %H:%M:%S'
                         )
 
-                    # Создание переменных, отвечающих за промежуток от
-                    # введенного пользователем времени, в котором следует
-                    # искать планы в колонке "time" таблице "plans" базы
-                    # данных.
-                    time_delta_before: datetime.timedelta = datetime.timedelta(
+                    time_delta_before = datetime.timedelta(
                         minutes=30
                         )
-                    time_delta_after: datetime.timedelta = datetime.timedelta(
+                    time_delta_after = datetime.timedelta(
                         hours=1,
                         minutes=15
                         )
@@ -114,7 +101,6 @@ def read_plans(user_time: str) -> list:
                 except Exception:
                     continue
 
-            # Возврат финального ответа.
             return answer
 
         # Иначе, если параметров времени 1 или они вовсе отсутствуют, то
@@ -131,9 +117,9 @@ def update_plans(place: str, old_time: str, new_time: str) -> bool:
     (колонка "place").
 
     На вход подаются:
-     - place (str)
-     - old_time (str)
-     - new_time (str)
+     - place (str) Место, на которое в данный момент записан план.
+     - old_time (str) Время, на которое в данный момент записан план.
+     - new_time (str) Время, на которое необходимо перенести план.
 
     Возвращает значение True, если запись в базе данных обновлена.
 
@@ -143,36 +129,26 @@ def update_plans(place: str, old_time: str, new_time: str) -> bool:
     # Создает бд, если таковая отсутствует.
     create.start_database()
 
-    conn: sqlite3.Connection = sqlite3.connect('database.db')
-    with conn:
-        cursor: sqlite3.Cursor = conn.cursor()
+    connection = sqlite3.connect('database.db')
+    with connection:
+        cursor = connection.cursor()
 
         # Поиск записей, в которых время (колонка "time") совпадает с
         # указанным пользователем временем и место (колонка "place")
         # совпадает с указанным пользователем местом, в таблице "plans"
         # базы данных.
-        sql_query: str = queries.check_existence_query
-        arguments: tuple = (place, old_time)
+        sql_query = queries.check_existence_query
+        arguments = (place, old_time)
 
-        # Запись ответа в переменную "result".
         cursor.execute(sql_query, arguments)
-        result: list = cursor.fetchall()
+        result = cursor.fetchall()
 
-        # Если переменная "result" содержит данные (не пустая), то мы
-        # обновляем время (колонка "time") в таблице "plans" базы данных,
-        # где место (колонка "place") соответствует заданному пользователем
-        # месту и возвращаем значение True.
         if result:
-            sql_query: str = queries.update_query
-            arguments: tuple = (new_time, old_time, place)
+            sql_query = queries.update_query
+            arguments = (new_time, old_time, place)
             cursor.execute(sql_query, arguments)
             return True
-
-        # Иначе переменная "result" не содержит данные, значит у пользователя
-        # нет записей с данными, которые он ввел, значит можно не обновлять
-        # данные в таблице "plans" базы данных и вернуть значение False.
-        else:
-            return False
+        return False
 
 
 def delete_plans(place: str, time: str) -> bool:
@@ -182,8 +158,8 @@ def delete_plans(place: str, time: str) -> bool:
     данных "plans".
 
     На вход подаются:
-     - place (str)
-     - time (str)
+     - place (str) Место, запись на которое необходимо удалить.
+     - time (str) Время, запись на которое необходимо удалить.
 
     Возвращает True, если запись в таблице "plans" базы данных удалена.
 
@@ -193,32 +169,27 @@ def delete_plans(place: str, time: str) -> bool:
     # Создает бд, если таковая отсутствует.
     create.start_database()
 
-    conn: sqlite3.Connection = sqlite3.connect('database.db')
+    conn = sqlite3.connect('database.db')
     with conn:
         # Если хоть один параметр для записи в таблицу "plans" базы данных
         # отсутствует, то функция вернет False.
         if place is None or time is None:
             return False
-        else:
-            # Поиск записей, в которых время (колонка "time") совпадает с
-            # указанным пользователем временем и место (колонка "place")
-            # совпадает с указанным пользователем местом, в таблице "plans"
-            # базы данных.
-            cursor: sqlite3.Cursor = conn.cursor()
-            sql_query: str = queries.check_existence_query
-            arguments: tuple = (place, time)
+        # Поиск записей, в которых время (колонка "time") совпадает с
+        # указанным пользователем временем и место (колонка "place")
+        # совпадает с указанным пользователем местом, в таблице "plans"
+        # базы данных.
+        cursor = conn.cursor()
+        sql_query = queries.check_existence_query
+        arguments = (place, time)
 
-            # Запись результата запроса в переменную "result".
+        cursor.execute(sql_query, arguments)
+        result = cursor.fetchall()
+
+        if result:
+            cursor = conn.cursor()
+            sql_query = queries.delete_query
+            arguments = (place, time)
             cursor.execute(sql_query, arguments)
-            result: list = cursor.fetchall()
-
-            # Если такие записи существуют, то удаляем их и возвращаем True.
-            if result:
-                cursor: sqlite3.Cursor = conn.cursor()
-                sql_query: str = queries.delete_query
-                arguments: tuple = (place, time)
-                cursor.execute(sql_query, arguments)
-                return True
-            # Иначе возвращаем False.
-            else:
-                return False
+            return True
+        return False
