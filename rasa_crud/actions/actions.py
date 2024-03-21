@@ -41,7 +41,7 @@ class CreateRow(Action):
                 place_from_user += entity['value']
 
                 # Индекс 0 для выбора наиболее вероятного распознавания.
-                place += str(morph.parse(entity['value'])[0].normal_form)
+                place += morph.parse(entity['value'])[0].normal_form
 
             # full_time_from_user - время, которое необходимо записать в ежедневник
             # после приведения к начальной форме с помощью лемматизации.
@@ -95,14 +95,15 @@ class ReadRow(Action):
         entities = tracker.latest_message.get('entities', [])
 
         for entity in entities:
-            full_entity.append(entity["value"])
+            if entity["entity"] == "time":
+                full_entity.append(entity["value"])
 
         full_entity = " ".join(full_entity)
 
         # time_from_user - время, по которому необходимо считать записи из
         # ежедневника, после приведения к начальной форме с помощью лемматизации.
         # Индекс 0 для выбора наиболее вероятного распознавания.
-        time_from_user = str(morph.parse(full_entity)[0].normal_form.lower())
+        time_from_user = morph.parse(full_entity)[0].normal_form.lower()
 
         # time - время, по которому необходимо считать записи из ежедневника,
         # после приведения к формату хранения времени в базе данных.
@@ -118,7 +119,7 @@ class ReadRow(Action):
                                              f'Когда - {plan[2]}.')
 
             else:
-                dispatcher.utter_message(text='У вас нету планов'
+                dispatcher.utter_message(text='У вас нету планов '
                                          f'на {time_from_user}.')
 
         except Exception:
@@ -161,7 +162,7 @@ class UpdateRow(Action):
         # из ежедневника и заменить их на новые, после приведения к
         # начальной форме с помощью лемматизации.
         # Индекс 0 для выбора наиболее вероятного распознавания.
-        old_time_from_user = str(morph.parse(old_time)[0].normal_form.lower())
+        old_time_from_user = morph.parse(old_time)[0].normal_form.lower()
 
         # old_time - время, по которому необходимо считать записи из
         # ежедневника и заменить их на новые, после приведения к формату
@@ -172,7 +173,7 @@ class UpdateRow(Action):
         # из ежедневника, после приведения к начальной форме с помощью
         # лемматизации.
         # Индекс 0 для выбора наиболее вероятного распознавания.
-        new_time_from_user = str(morph.parse(new_time)[0].normal_form.lower())
+        new_time_from_user = morph.parse(new_time)[0].normal_form.lower()
 
         # new_time - время, на которое необходимо заменить записи из
         # ежедневника, после приведения к начальной форме с помощью
@@ -180,7 +181,7 @@ class UpdateRow(Action):
         new_time = str(rutimeparser.parse(new_time_from_user))
 
         # Индекс 0 для выбора наиболее вероятного распознавания.
-        place = str(morph.parse(place)[0].normal_form.lower())
+        place = morph.parse(place)[0].normal_form.lower()
 
         try:
             result = utils_db.update_plans(place, old_time, new_time)
@@ -248,7 +249,7 @@ class DeleteRow(Action):
             elif entity['entity'] == 'time':
                 # Индекс 0 для выбора наиболее вероятного распознавания.
                 full_time_from_user.append(morph.parse(entity['value'])[0].normal_form.lower())
-                full_time.append(rutimeparser.parse(full_time_from_user))
+                full_time.append(str(rutimeparser.parse(full_time_from_user)))
 
         place_from_user = " ".join(place_from_user)
         place = " ".join(place)

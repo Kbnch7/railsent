@@ -1,12 +1,25 @@
 import sqlite3
 import datetime
-from DB import create
 from DB import queries
 
 
+def start_database() -> None:
+    """
+    Создание таблицы в базе данных, если она не существует.
+    """
+    connection = sqlite3.connect("database.db")
+
+    cursor = connection.cursor()
+
+    cursor.execute(queries.create_db_query)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
 def create_plans(user_id: str, place: str, time: str):
     """
-    Функция, которая записывает определенный план (запись в таблице
+    Запись определенного плана (запись в таблице
     базы данных) на указанное время.
 
     На вход подаются:
@@ -20,7 +33,7 @@ def create_plans(user_id: str, place: str, time: str):
     (некорректные входные данные).
     """
     # Создает бд, если таковая отсутствует.
-    create.start_database()
+    start_database()
 
     if user_id is None or place is None or time is None:
         return False
@@ -38,9 +51,11 @@ def create_plans(user_id: str, place: str, time: str):
         return True
 
 
-def read_plans(user_time: str) -> list:
-    """Функция, которая считывает планы (записи в таблице базы
-    данных), записанные на указанное время (колонка "time" ) в базе данных.
+def read_plans(time: str) -> list:
+    """
+    Считывание планов (записи в таблице базы
+    данных), записанных на указанное время (колонка "time" )
+    в базе данных.
 
     На вход подаются:
      - user_time (str) Время, запись на которое необходимо считать.
@@ -49,7 +64,7 @@ def read_plans(user_time: str) -> list:
     значение колонки "time" совпадает с входными данными.
     """
     # Создает бд, если таковая отсутствует.
-    create.start_database()
+    start_database()
 
     connection = sqlite3.connect('database.db')
     with connection:
@@ -58,23 +73,23 @@ def read_plans(user_time: str) -> list:
         # Поиск времени (колонка "time"), начало которого совпадает с
         # указанным пользователем временем (его датой) в таблице базы данных.
         sql_query = queries.read_query
-        arguments = (str(user_time.split(' ')[0])+'%',)
+        arguments = (time.split(' ')[0]+'%',)
 
         # Получение результата запроса.
         cursor.execute(sql_query, arguments)
-        response = cursor.fetchall()
+        all_answer = cursor.fetchall()
 
-        answer = []
+        answer_by_time = []
 
         # Если в указанном пользователем времени больше 1 параметра (например,
-        # дата и время), то происходят дополнительные проверки.
-        if len(user_time.split()) > 1:
+        # дата и время), то планы будут браться в определенном промежутке.
+        if len(time.split()) > 1:
 
-            user_time = datetime.datetime.strptime(
-                user_time, '%Y-%m-%d %H:%M:%S'
+            time = datetime.datetime.strptime(
+                time, '%Y-%m-%d %H:%M:%S'
                 )
 
-            for plan in response:
+            for plan in all_answer:
 
                 # Ожидание исключения необходимо для того случая, если время в
                 # таблице "plans" колонке "time" записано не в том формате,
@@ -95,24 +110,23 @@ def read_plans(user_time: str) -> list:
                     # Если +1.25 и -0.5 часа от введенного пользователем
                     # времени существует план, то он добавится в финальный
                     # ответ.
-                    if (user_time - plan_time < time_delta_before and
-                            plan_time - user_time < time_delta_after):
-                        answer.append(plan)
+                    if (plan_time - time_delta_after < time <
+                            plan_time + time_delta_before):
+                        answer_by_time.append(plan)
                 except Exception:
                     continue
 
-            return answer
+            return answer_by_time
 
         # Иначе, если параметров времени 1 или они вовсе отсутствуют, то
         # дополнительных проверок не требуется, результатом будет весь
         # результат запроса к базе данных (переменная "response").
-        else:
-            return response
+        return all_answer
 
 
 def update_plans(place: str, old_time: str, new_time: str) -> bool:
     '''
-    Функция, которая обновляет время (колонка "time") указанного плана
+    Обновление времени (колонка "time") указанного плана
     (запись в таблице "plans" базы данных) по указанному месту
     (колонка "place").
 
@@ -127,7 +141,7 @@ def update_plans(place: str, old_time: str, new_time: str) -> bool:
     (запись в таблице "plans" базы данных по входным данным не найдена).
     '''
     # Создает бд, если таковая отсутствует.
-    create.start_database()
+    start_database()
 
     connection = sqlite3.connect('database.db')
     with connection:
@@ -153,7 +167,7 @@ def update_plans(place: str, old_time: str, new_time: str) -> bool:
 
 def delete_plans(place: str, time: str) -> bool:
     '''
-    Функция, которая удаляет указанный план (запись в таблице базы данных)
+    Удаляение указанного плана (запись в таблице базы данных)
     по времени (колонка "time") и месту (колонка "place") из таблицы базы
     данных "plans".
 
@@ -167,7 +181,7 @@ def delete_plans(place: str, time: str) -> bool:
     (запись не найдена).
     '''
     # Создает бд, если таковая отсутствует.
-    create.start_database()
+    start_database()
 
     conn = sqlite3.connect('database.db')
     with conn:
